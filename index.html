@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>POS Screen</title>
+  <script src="../sweetalert.js"></script>
+  <script src="../tailwind.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="flex gap-6 p-4">
+    <!-- product selection -->
+    <div class="w-7/12">
+      <div class="bg-white rounded-xl shadow-sm border p-4">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Products</h2>
+        <div class="grid grid-cols-4 gap-4" id="main_product_card"></div>
+      </div>
+    </div>
+
+    <!-- pos system menu -->
+    <div class="w-5/12">
+      <div class="bg-white rounded-xl shadow-sm border p-4 flex flex-col h-full">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Cart</h2>
+        
+        <!-- product output table -->
+        <div class="flex-1 overflow-y-auto border rounded-lg mb-4">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700">
+              <tr class="[&>th]:p-2 border-b">
+                <th>No.</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="selected_tr" class="text-gray-800"></tbody>
+          </table>
+        </div>
+
+        <!-- Total -->
+        <div class="flex justify-between items-center py-3 border-t">
+          <span class="text-lg font-medium text-gray-700">Total:</span>
+          <div class="text-right">
+            <p id="total_usd" class="text-xl font-bold text-gray-900">0.00$</p>
+            <p id="total_khr" class="text-sm text-gray-500">0៛</p>
+          </div>
+        </div>
+
+        <!-- Received -->
+        <div class="flex justify-between items-center py-3 border-t">
+          <label for="received" class="text-lg font-medium text-gray-700">Received:</label>
+          <input type="number" id="received" onkeyup="getChangeAmount()" class="w-40 text-lg border rounded-lg px-3 py-1 focus:outline-none focus:ring-1 focus:ring-gray-400"/>
+        </div>
+
+        <!-- Change -->
+        <div class="flex justify-between items-center py-3 border-t">
+          <span class="text-lg font-medium text-gray-700">Change:</span>
+          <span id="changed_amount" class="text-2xl font-semibold text-gray-900"></span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-4 mt-4 border-t pt-4">
+          <button id="btn_cancel" onclick="cancelProduct()" class="px-4 py-2 text-sm rounded-lg border border-gray-400 text-gray-700 hover:bg-gray-100">Cancel</button>
+          <button id="btn_pay" class="px-4 py-2 text-sm rounded-lg bg-gray-800 text-white hover:bg-black">Pay</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+<script>
+  let product_array = JSON.parse(localStorage.getItem('product_array') ?? '[]')
+  let main_product_card = document.getElementById('main_product_card')
+  let selected_tr = document.getElementById('selected_tr')
+  let input_received = document.getElementById('received')
+  let btn_pay = document.getElementById('btn_pay')
+  let selected_product = []
+  let total = 0
+
+  renderProductCard()
+
+  function renderProductCard(){
+    let html_card = ''
+    product_array.forEach((product, index) =>{
+      html_card += `
+        <div class="bg-gray-50 border rounded-lg p-3 shadow-sm hover:shadow-md transition cursor-pointer" onclick="cardOnClick(${index})">
+          <div class="h-32 flex items-center justify-center bg-white border rounded mb-2">
+            <img class="max-h-full object-contain" src="${product.profile}" alt="${product.name}" />
+          </div>
+          <div class="text-center">
+            <h5 class="text-sm font-medium text-gray-800 truncate">${product.name}</h5>
+            <p class="text-xs text-gray-500">${product.price}$</p>
+          </div>
+        </div>
+      `
+    })
+    main_product_card.innerHTML = html_card
+  }
+
+  function cardOnClick(index){
+    let current_product = {...product_array[index], quantity: 1}
+    let dpl_index = selected_product.findIndex(p => p.name === current_product.name)
+    if(dpl_index !== -1){
+      selected_product[dpl_index].quantity += 1
+    } else {
+      selected_product.push(current_product)
+    }
+    renderSeletecProduct()
+    Total()
+  }
+
+  function deleteItem(index){
+    swal({
+      title: "Remove this item?",
+      text: "It will be removed from your cart.",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true,
+    })
+    .then((willDelete) => {
+      if (willDelete) {
+        selected_product.splice(index, 1)
+        renderSeletecProduct()
+        Total()
+      }
+    });
+  }
+
+  function renderSeletecProduct(){
+    let selected_product_tr = ''
+    selected_product.forEach((product, index) =>{
+      let total_product = product.price * product.quantity
+      selected_product_tr += `
+        <tr class="[&>td]:p-2 border-b">
+          <td>${index + 1}.</td>
+          <td>${product.name}</td>
+          <td>${product.price}$</td>
+          <td>${product.quantity}</td>
+          <td>${total_product.toFixed(2)}$</td>
+          <td>
+            <button onclick="deleteItem(${index})" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">✕</button>
+          </td>
+        </tr>
+      `
+    })
+    selected_tr.innerHTML = selected_product_tr
+  }
+
+  function Total(){
+    total = selected_product.reduce((sum, product) => sum + (product.price * product.quantity), 0)
+    document.getElementById('total_usd').innerText = total.toFixed(2) +"$"
+    document.getElementById('total_khr').innerText = (total * 4000).toLocaleString() +"៛"
+  }
+
+  btn_pay.addEventListener('click', function(){
+    let received = input_received.value
+    if (selected_product.length === 0){
+      swal("Empty Cart", "Please select products before paying.", "error")
+      return
+    }
+    if (parseFloat(received) < total){
+      swal("Insufficient Amount", "Received amount is less than total.", "error")
+      return
+    }
+    localStorage.setItem('selected_product', JSON.stringify(selected_product))
+    let width = 600
+    let height = 600
+    let left = (window.screen.width - width) / 2;
+    let top = (window.screen.height - height) / 2;
+    window.open('invoice.html','_blank',`width=${width},height=${height},left=${left},top=${top}`)
+  })
+
+  function getChangeAmount(){
+    let received = parseFloat(input_received.value)
+    let label_change_amount = document.getElementById('changed_amount')
+    if(!received){
+      label_change_amount.innerText = ""
+      return
+    }
+    let changed_amount = received - total
+    if(!isNaN(changed_amount)){
+      label_change_amount.innerText = changed_amount.toFixed(2) + "$"
+    }
+  }
+
+  function cancelProduct(){
+    swal({
+      title: "Clear cart?",
+      text: "All selected products will be removed.",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true,
+    })
+    .then((willDelete) => {
+      if (willDelete) {
+        total = 0
+        selected_product = []
+        renderSeletecProduct()
+        Total()
+        input_received.value = ""
+        document.getElementById('changed_amount').innerText = ""
+      }
+    });
+  }
+</script>
+</html>
